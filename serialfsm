@@ -1,0 +1,86 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
+
+--entity serialfsm is
+  port(reset,clk, F, S: in std_logic;
+        readLED: out std_logic;
+		  st: out std_logic_vector(2 downto 0));
+end serialfsm;
+
+architecture beh of serialfsm is
+
+type state is (inpu, SEL, rd, wr, ch, store); --define the states
+
+signal cstate,nstate: state := inpu;  --signal uses states
+
+begin
+  process(clk,reset)
+  begin
+    if(reset='1') then  --set state to S0
+      cstate<=inpu;
+		elsif rising_edge(clk) then --if there is a rising edge of the clock do what's below
+		  cstate<=nstate;
+		end if;
+  end process;
+
+  process(cstate)
+    begin
+    case cstate is
+  
+    when inpu => --takes in a character
+	   st <= "001"; --will show on an led 1 in binary
+		readLED <= '0';
+      if F = '1' then
+	     nstate <= SEL;
+		  else 
+		  nstate <= inpu;
+	   end if;
+
+    when SEL => --selects read/write
+	   st <= "010";
+	   readLED <= '0';	
+      if F = '1' and S = '0' then 
+		  nstate <= rd;
+		elsif F = '0' and S = '1' then
+		  nstate <= wr;
+		else
+		  nstate <= SEL;
+		end if;  
+		
+	when rd =>
+	  st <= "011";
+	  readLED <= '1';
+	  if F = '1' then
+	    --light led to signal read state
+	    nstate <= inpu;
+	  end if; 
+	  
+	when wr => --write to register
+	  st <= "100"; 
+	  readLED <= '0';
+	  if F = '1' then
+	    nstate <= ch; 
+	  else
+		 nstate <= wr;
+	  end if;
+		
+	when ch => --waits for a character
+	   st <= "101";
+	   readLED <= '0';	
+	   if F = '1' then
+		  nstate <= store;
+		end if;
+		
+   when store => --stores character for write option
+	   st <= "110";
+		readLED <= '0';
+	  if F = '1' then
+	    nstate <= inpu; --goes to the start
+	  else 
+	    nstate <= inpu;
+	  end if;
+		
+  end case;
+  end process;
+end beh;
